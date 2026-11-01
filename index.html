@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Belajar App</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  
+  <!-- Babel Standalone untuk JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- PDF.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  
+  <!-- Google Fonts Traditional Arabic & UI Fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400&family=Scheherazade+New:wght@400;700&family=Noto+Naskh+Arabic:wght@400;600;700&family=Outfit:wght@300;400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+    }
+    .arabic-text {
+      font-family: 'Traditional Arabic', 'Amiri', 'Noto Naskh Arabic', 'Scheherazade New', serif !important;
+      font-feature-settings: "rlig" 1, "calt" 1, "liga" 1;
+      direction: rtl;
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-8px); }
+      40%, 80% { transform: translateX(8px); }
+    }
+    .animate-shake {
+      animation: shake 0.4s ease-in-out;
+    }
+
+    /* ANIMASI PRESENTASI MODERN SLA KORPORAT / PDF DESIGN */
+    @keyframes slideEnter {
+      from { opacity: 0; transform: translateY(16px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-slide-enter {
+      animation: slideEnter 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes bulletPop {
+      from { opacity: 0; transform: translateX(-15px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    .animate-bullet-pop {
+      animation: bulletPop 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* BENTUK KAPSUL & ELEMEN DEKORATIF PDF SALFORD & CO */
+    .blob-pill {
+      border-radius: 999px 999px 40px 40px;
+    }
+    .blob-pill-reverse {
+      border-radius: 40px 40px 999px 999px;
+    }
+    .glow-blue {
+      box-shadow: 0 20px 50px -10px rgba(37, 99, 235, 0.3);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 h-screen w-screen overflow-hidden flex flex-col justify-between">
+  <div id="root" class="h-full w-full flex flex-col"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Helper sanitasi teks Arab & Harakat
+    const cleanArabicText = (text) => {
+      if (!text) return '';
+      return text
+        .replace(/[\r\n\t]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    };
+
+    const containsArabic = (str) => /[\u0600-\u06FF]/.test(str || '');
+
+    const ARABIC_LABELS = ['أ', 'ب', 'ج', 'د', 'هـ'];
+
+    // Preset data berharakat
+    const PRESET_DATASETS = {
+      mix: {
+        title: "Salford & Co. Modul Utama",
+        items: [
+          { type: "mc", q: "مَا هُوَ عَدَدُ أَرْكَانِ الإِسْلَامِ؟", options: ["خَمْسَةٌ", "أَرْبَعَةٌ", "سِتَّةٌ", "ثَلَاثَةٌ"], answer: "خَمْسَةٌ" },
+          { type: "mc", q: "Teknologi AI dikembangkan untuk meningkatkan...", options: ["Efisiensi dan Otomatisasi", "Kesalahan Manusia", "Biaya Operasional", "Konsumsi Listrik"], answer: "Efisiensi dan Otomatisasi" },
+          { type: "tf", q: "السَّمَكُ يَعِيشُ فِي المَاءِ.", options: ["صَحِيح", "خَطَأ"], answer: "صَحِيح" },
+          { type: "tf", q: "IoT menghubungkan berbagai perangkat fisik secara digital.", options: ["Benar", "Salah"], answer: "Benar" }
+        ]
+      }
+    };
+
+    // Web Audio Synthesizer
+    class SoundFX {
+      constructor() { this.ctx = null; }
+      init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      playCorrect() {
+        this.init(); if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.frequency.setValueAtTime(freq, now + i * 0.08);
+          gain.gain.setValueAtTime(0.2, now + i * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.08 + 0.2);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.2);
+        });
+      }
+      playWrong() {
+        this.init(); if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + 0.3);
+      }
+      playSlideSound() {
+        this.init(); if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.frequency.setValueAtTime(440, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        osc.connect(gain); gain.connect(this.ctx.destination);
+        osc.start(now); osc.stop(now + 0.12);
+      }
+    }
+
+    const sfx = new SoundFX();
+
+    // HELPER SPEECH SYNTHESIS ENGINE
+    const speakAssistantText = (text, isArabic = false) => {
+      if (!('speechSynthesis' in window) || !text) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(cleanArabicText(text));
+      utterance.rate = 0.9;
+      utterance.pitch = 1.0;
+
+      const voices = window.speechSynthesis.getVoices();
+      if (isArabic) {
+        utterance.lang = 'ar-SA';
+        const arVoice = voices.find(v => v.lang.includes('ar'));
+        if (arVoice) utterance.voice = arVoice;
+      } else {
+        utterance.lang = 'id-ID';
+        const idVoice = voices.find(v => v.lang.includes('id'));
+        if (idVoice) utterance.voice = idVoice;
+      }
+      
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch (err) {
+        console.log("Speech Error:", err);
+      }
+    };
+
+    function App() {
+      const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+      const [difficulty, setDifficulty] = useState('mix');
+      const [questionLimit, setQuestionLimit] = useState(5);
+      const [gameState, setGameState] = useState('setup');
+      const [questions, setQuestions] = useState(PRESET_DATASETS.mix.items);
+      const [slides, setSlides] = useState([
+        { title: "Teknologi Quantum & Masa Depan", content: ["Teknologi kecerdasan buatan membantu otomatisasi pekerjaan secara efisien.", "Meningkatkan efisiensi serta mengurangi kesalahan manusia dalam industri."] },
+        { title: "Keamanan Cyber di Era Digital", content: ["99% Keamanan sistem cyber dilindungi oleh enkripsi pintar berbasis data.", "Integrasi sistem industri modern dan rumah pintar yang terenkripsi."] }
+      ]);
+      
+      const [currentSlideIdx, setCurrentSlideIdx] = useState(0);
+      const [activeSessionQuestions, setActiveSessionQuestions] = useState([]);
+      const [currentIdx, setCurrentIdx] = useState(0);
+      const [score, setScore] = useState(0);
+      const [answerFeedback, setAnswerFeedback] = useState(null);
+      const [isParsingPdf, setIsParsingPdf] = useState(false);
+      const [isAiProcessing, setIsAiProcessing] = useState(false);
+      const [jsonError, setJsonError] = useState('');
+
+      // Auto Read Question Saat berpindah soal
+      useEffect(() => {
+        if (gameState === 'playing' && activeSessionQuestions[currentIdx]) {
+          const qText = activeSessionQuestions[currentIdx].q;
+          speakAssistantText(qText, containsArabic(qText));
+        }
+      }, [currentIdx, gameState]);
+
+      const handleApiKeyChange = (val) => {
+        setApiKey(val);
+        localStorage.setItem('gemini_api_key', val);
+      };
+
+      // FUNGSI PENANGANAN UPLOAD & PARSE PDF VIA GEMINI AI
+      const handlePdfUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setIsParsingPdf(true);
+        setJsonError('');
+
+        try {
+          if (!window.pdfjsLib) {
+            throw new Error("Library PDF.js belum siap. Silakan coba lagi.");
+          }
+
+          const arrayBuffer = await file.arrayBuffer();
+          const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          
+          let fullText = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(' ');
+            fullText += pageText + '\n';
+          }
+
+          const sanitizedText = cleanArabicText(fullText);
+
+          setIsAiProcessing(true);
+          try {
+            const aiData = await generateContentWithGemini(sanitizedText);
+            if (aiData) {
+              if (aiData.slides && aiData.slides.length > 0) setSlides(aiData.slides);
+              if (aiData.questions && aiData.questions.length > 0) setQuestions(aiData.questions);
+              
+              setCurrentSlideIdx(0);
+              setGameState('presentation');
+              speakAssistantText("PDF berhasil diproses! Silakan pelajari slide materi terlebih dahulu.");
+              return;
+            }
+          } catch (aiErr) {
+            console.warn("AI Generation Fallback Error:", aiErr);
+            setJsonError(`Gagal membuat slide AI: ${aiErr.message}`);
+          } finally {
+            setIsAiProcessing(false);
+          }
+        } catch (err) {
+          setJsonError(`Gagal membaca file PDF: ${err.message}`);
+        } fontFinished:
+        setIsParsingPdf(false);
+      };
+
+      // GEMINI AI INTEGRATION ENGINE
+      const generateContentWithGemini = async (pdfText) => {
+        if (!apiKey) {
+          throw new Error("API Key Gemini belum dimasukkan. Silakan isi di form di atas!");
+        }
+
+        const systemPrompt = `You are an expert educator and Arabic linguistic expert. Analyze the provided PDF text and return a JSON object with:
+1. "slides": Array of presentation slides (3 to 6 slides max). Each slide has "title" and "content" (array of short key points).
+2. "questions": Array of quiz questions (MCQ 'mc' and True/False 'tf' ONLY).
+
+CRITICAL FOR ARABIC TEXT:
+- ALWAYS add FULL VOWELIFICATION / HARAKAT / TASYKIL (كامل بالحركات) for all Arabic text.
+- Clean text, no line breaks in words.
+
+JSON Schema format:
+{
+  "slides": [
+    { "title": "Judul Slide", "content": ["Poin materi 1", "Poin materi 2"] }
+  ],
+  "questions": [
+    { "type": "mc", "q": "Soal?", "options": ["A", "B", "C", "D"], "answer": "A" },
+    { "type": "tf", "q": "Soal benar/salah?", "options": ["صَحِيح", "خَطَأ"], "answer": "صَحِيح" }
+  ]
+}`;
+
+        const userPrompt = `Buatkan slide presentasi ringkas dan soal kuis kustom dari teks materi berikut ini:\n\n${pdfText.substring(0, 4000)}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+        const payload = {
+          contents: [{ parts: [{ text: userPrompt }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          generationConfig: {
+            responseMimeType: "application/json"
+          }
+        };
+
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error(`API response error status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!jsonText) return null;
+
+        return JSON.parse(jsonText);
+      };
+
+      const startGame = () => {
+        let pool = [...questions];
+        const limit = typeof questionLimit === 'number' ? questionLimit : pool.length;
+        const shuffled = pool.sort(() => 0.5 - Math.random()).slice(0, limit);
+        
+        setActiveSessionQuestions(shuffled);
+        setScore(0);
+        setCurrentIdx(0);
+        setGameState('playing');
+      };
+
+      const handleAnswer = (selected, correct) => {
+        const isCorrect = selected.trim() === correct.trim();
+        const isAr = containsArabic(selected);
+
+        if (isCorrect) {
+          sfx.playCorrect();
+          setAnswerFeedback('correct');
+          setScore(prev => prev + 100);
+          const praises = isAr 
+            ? ["مَاشَاءَ اللَّه! إِجَابَةٌ صَحِيحَةٌ", "بَارَكَ اللَّهُ فِيكَ!"]
+            : ["Maa Syaa Allah, tepat sekali!", "Barakallahu fiik, jawabanmu benar!"];
+          speakAssistantText(praises[Math.floor(Math.random() * praises.length)], isAr);
+        } else {
+          sfx.playWrong();
+          setAnswerFeedback('wrong');
+          const encourages = isAr
+            ? ["بِسْمِ اللَّهِ، حَاوِلْ مَرَّةً أُخْرَى", "لا تَأْسَفْ، وَاصِلْ!"]
+            : ["Bismillah, ayo coba lagi di soal berikutnya!", "Tetap semangat!"];
+          speakAssistantText(encourages[Math.floor(Math.random() * encourages.length)], isAr);
+        }
+
+        setTimeout(() => {
+          setAnswerFeedback(null);
+          if (currentIdx + 1 < activeSessionQuestions.length) {
+            setCurrentIdx(prev => prev + 1);
+          } else {
+            setGameState('victory');
+            speakAssistantText(isAr ? "اِنْتَهَى الْكُوِيزُ! نَتِيجَتُكَ جَيِّدَةٌ" : `Kuis selesai! Total skor kamu adalah ${score + (isCorrect ? 100 : 0)}`, isAr);
+          }
+        }, 1200);
+      };
+
+      return (
+        <div className="w-full h-full max-w-6xl mx-auto p-3 md:p-5 flex flex-col justify-between overflow-hidden">
+          {/* HEADER RINGKAS FIT-LAPTOP */}
+          <header className="flex justify-between items-center py-2 px-4 border-b border-slate-800/80 bg-slate-900/60 rounded-2xl backdrop-blur-md flex-shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white text-xs shadow-md">
+                BA
+              </div>
+              <div>
+                <h1 className="text-base font-extrabold tracking-tight text-white flex items-center gap-2">
+                  BELAJAR APP <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">EDU TECH</span>
+                </h1>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {slides.length > 0 && gameState !== 'presentation' && (
+                <button 
+                  onClick={() => setGameState('presentation')} 
+                  className="px-3 py-1.5 bg-blue-600/30 hover:bg-blue-600 border border-blue-400/40 text-blue-200 hover:text-white rounded-xl text-xs font-bold transition-all"
+                >
+                  📺 Slide Presentasi
+                </button>
+              )}
+              <button 
+                onClick={() => setGameState('setup')} 
+                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 transition-all"
+              >
+                ⚙️ Pengaturan
+              </button>
+            </div>
+          </header>
+
+          {/* SETUP SCREEN */}
+          {gameState === 'setup' && (
+            <div className="my-auto py-2 space-y-4 animate-fade-in overflow-y-auto max-h-[calc(100vh-100px)] px-1">
+              <div className="text-center space-y-1">
+                <span className="text-[11px] font-bold tracking-widest text-blue-400 uppercase bg-blue-950/80 px-3 py-1 rounded-full border border-blue-500/30">
+                  DESAIN PRESENTASI & KUIS OTOMATIS
+                </span>
+                <h2 className="text-2xl md:text-3xl font-black text-white">Belajar App Dashboard</h2>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-900 border border-amber-500/30 space-y-1.5">
+                <label className="text-xs font-bold text-amber-300 block">🔑 Gemini API Key (Manual):</label>
+                <input
+                  type="password"
+                  placeholder="Masukkan API Key Gemini (AI Studio)..."
+                  value={apiKey}
+                  onChange={(e) => handleApiKeyChange(e.target.value)}
+                  className="w-full p-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:border-amber-400 outline-none"
+                />
+              </div>
+
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-blue-950/60 via-slate-900 to-indigo-950/60 border border-blue-500/30 text-center space-y-3 shadow-lg">
+                <div className="space-y-1">
+                  <h3 className="font-extrabold text-sm text-blue-300">Unggah Dokumen Materi (PDF)</h3>
+                  <p className="text-xs text-slate-400">PDF akan dikonversi menjadi Slide Presentasi bergaya modern & Kuis Arcade</p>
+                </div>
+                <label className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-xs text-white cursor-pointer transition-all shadow-lg hover:shadow-blue-500/30">
+                  <span>{isParsingPdf || isAiProcessing ? '🤖 AI Memproses PDF & Slide...' : '📄 Unggah PDF Pelajaran'}</span>
+                  <input type="file" accept=".pdf" onChange={handlePdfUpload} disabled={isParsingPdf || isAiProcessing} className="hidden" />
+                </label>
+
+                {jsonError && (
+                  <p className="text-xs text-rose-400 font-bold bg-rose-950/60 p-2.5 rounded-xl border border-rose-500/40">
+                    ⚠️ {jsonError}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
+                  <label className="text-xs font-bold text-slate-300 block">Tingkat Kesulitan:</label>
+                  <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full p-2 bg-slate-950 rounded-xl text-xs border border-slate-700 text-slate-200">
+                    <option value="easy">Mudah (Easy)</option>
+                    <option value="medium">Sedang (Medium)</option>
+                    <option value="hard">Sulit (Hard)</option>
+                    <option value="mix">Campuran (Mixed)</option>
+                  </select>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1">
+                  <label className="text-xs font-bold text-slate-300 block">Jumlah Soal Kuis:</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={questionLimit}
+                    onChange={(e) => setQuestionLimit(parseInt(e.target.value) || 1)}
+                    className="w-full p-2 bg-slate-950 rounded-xl text-xs border border-slate-700 text-center font-bold text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                {slides.length > 0 && (
+                  <button
+                    onClick={() => setGameState('presentation')}
+                    className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg transition-all"
+                  >
+                    📺 Buka Presentasi Slide ({slides.length})
+                  </button>
+                )}
+                <button
+                  onClick={startGame}
+                  className="flex-1 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-90 text-slate-950 font-black text-xs shadow-lg transition-all"
+                >
+                  🎮 Langsung Main Kuis ➔
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* PRESENTATION SLIDES SCREEN */}
+          {gameState === 'presentation' && (
+            <div className="my-auto w-full flex-1 flex flex-col justify-between py-2 overflow-hidden max-h-[calc(100vh-80px)]">
+              <div className="flex justify-between items-center px-4 py-2 bg-slate-900/90 border border-blue-500/30 rounded-xl flex-shrink-0 mb-3">
+                <span className="text-[11px] font-black tracking-widest text-blue-400 uppercase">BELAJAR APP PRESENTATION</span>
+                <span className="text-xs font-bold text-slate-300">
+                  Slide <strong className="text-blue-400 text-sm">{currentSlideIdx + 1}</strong> dari {slides.length}
+                </span>
+              </div>
+
+              <div 
+                key={currentSlideIdx} 
+                className="animate-slide-enter flex-1 bg-slate-900 rounded-3xl border border-slate-800 p-6 md:p-8 flex flex-col justify-between shadow-2xl relative overflow-hidden glow-blue"
+              >
+                <div className="flex items-start justify-between border-b border-slate-800 pb-4 relative z-10 flex-shrink-0">
+                  <div className="space-y-1 w-full">
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-blue-400 bg-blue-950/80 px-3 py-1 rounded-full border border-blue-500/30">
+                      Indonesia • Teknologi & Pembelajaran
+                    </span>
+                    <h2 className={`text-2xl md:text-3xl font-black text-white w-full ${containsArabic(slides[currentSlideIdx]?.title) ? 'arabic-text text-right leading-[2.6] text-blue-200 pt-1' : ''}`}>
+                      {slides[currentSlideIdx]?.title}
+                    </h2>
+                  </div>
+                </div>
+
+                <div className="my-auto py-4 grid grid-cols-1 md:grid-cols-2 gap-4 relative z-10 overflow-y-auto max-h-[260px] px-1">
+                  {slides[currentSlideIdx]?.content?.map((bullet, idx) => {
+                    const isBulletArabic = containsArabic(bullet);
+                    return (
+                      <div 
+                        key={idx} 
+                        style={{ animationDelay: `${idx * 0.1}s` }}
+                        className={`animate-bullet-pop p-4 rounded-2xl bg-slate-950/80 border border-slate-800 hover:border-blue-500/40 flex items-center gap-3 transition-all hover:bg-slate-950 ${isBulletArabic ? 'flex-row-reverse text-right' : 'flex-row'}`}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-blue-600/20 border border-blue-400/50 text-blue-300 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                          0{idx + 1}
+                        </div>
+                        <p className={`text-slate-200 text-xs md:text-sm leading-relaxed flex-1 ${isBulletArabic ? 'arabic-text text-right text-base md:text-xl leading-[2.6] text-emerald-200 py-1' : ''}`}>
+                          {bullet}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between pt-4 border-t border-slate-800 relative z-10 flex-shrink-0">
+                  <button
+                    disabled={currentSlideIdx === 0}
+                    onClick={() => { sfx.playSlideSound(); setCurrentSlideIdx(prev => Math.max(0, prev - 1)); }}
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-xl text-xs font-bold text-slate-300 transition-all"
+                  >
+                    ⬅️ Sebelum
+                  </button>
+
+                  <button
+                    onClick={() => { sfx.playCorrect(); startGame(); }}
+                    className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:opacity-95 font-black text-xs text-slate-950 rounded-xl shadow-lg transition-all"
+                  >
+                    🎮 Lanjut ke Game Arena ➔
+                  </button>
+
+                  <button
+                    disabled={currentSlideIdx === slides.length - 1}
+                    onClick={() => { sfx.playSlideSound(); setCurrentSlideIdx(prev => Math.min(slides.length - 1, prev + 1)); }}
+                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded-xl text-xs font-bold text-slate-300 transition-all"
+                  >
+                    Lanjut ➡️
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PLAYING SCREEN */}
+          {gameState === 'playing' && (
+            <div className="my-auto space-y-3 w-full flex-1 flex flex-col justify-between py-2 overflow-hidden max-h-[calc(100vh-80px)]">
+              <div className="flex justify-between items-center px-4 py-2 bg-slate-900 rounded-xl border border-slate-800 flex-shrink-0">
+                <span className="text-xs text-slate-400">SKOR: <strong className="text-amber-400 text-lg ml-1">{score}</strong></span>
+                <span className="text-xs text-cyan-300 font-bold bg-slate-950 px-3 py-1 rounded-lg border border-slate-800">
+                  Soal {currentIdx + 1} / {activeSessionQuestions.length}
+                </span>
+              </div>
+
+              <div className={`w-full flex-1 min-h-[220px] rounded-3xl bg-slate-900/90 border-2 p-5 flex flex-col justify-between relative overflow-hidden shadow-2xl transition-all duration-300 ${
+                answerFeedback === 'correct' ? 'border-emerald-500 ring-4 ring-emerald-500/30' :
+                answerFeedback === 'wrong' ? 'border-rose-500 ring-4 ring-rose-500/30 animate-shake' :
+                'border-slate-800'
+              }`}>
+                {answerFeedback === 'correct' && (
+                  <div className="absolute inset-0 bg-emerald-500/10 backdrop-blur-[2px] z-20 flex items-center justify-center pointer-events-none">
+                    <div className="p-3 px-6 rounded-full bg-emerald-500 text-slate-950 font-black text-xl shadow-xl">
+                      ✓ MAA SYAA ALLAH! BENAR
+                    </div>
+                  </div>
+                )}
+                {answerFeedback === 'wrong' && (
+                  <div className="absolute inset-0 bg-rose-500/10 backdrop-blur-[2px] z-20 flex items-center justify-center pointer-events-none">
+                    <div className="p-3 px-6 rounded-full bg-rose-500 text-white font-black text-xl shadow-xl">
+                      ✕ BISMILLAH, COBA LAGI
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-5 md:p-6 rounded-2xl bg-slate-900 border border-slate-800 text-center my-auto flex flex-col justify-center items-center relative">
+                  <button
+                    onClick={() => speakAssistantText(activeSessionQuestions[currentIdx]?.q, containsArabic(activeSessionQuestions[currentIdx]?.q))}
+                    className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 rounded-xl text-blue-400 text-xs font-bold flex items-center gap-1 border border-slate-700"
+                    title="Baca Ulang Soal"
+                  >
+                    🔊 Suara
+                  </button>
+                  <h3 className={`text-lg md:text-2xl font-extrabold text-white leading-relaxed ${containsArabic(activeSessionQuestions[currentIdx]?.q) ? 'arabic-text leading-[2.5] text-cyan-200' : ''}`}>
+                    {activeSessionQuestions[currentIdx]?.q}
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-4 flex-shrink-0">
+                  {activeSessionQuestions[currentIdx]?.options?.map((opt, idx) => (
+                    <button
+                      key={idx}
+                      disabled={!!answerFeedback}
+                      onClick={() => handleAnswer(opt, activeSessionQuestions[currentIdx].answer)}
+                      className={`p-3.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-400 text-white font-bold text-xs md:text-sm transition-all flex items-center justify-center gap-2 ${containsArabic(opt) ? 'arabic-text text-base' : ''}`}
+                    >
+                      <span className="w-5 h-5 rounded-full bg-slate-800 text-cyan-400 flex items-center justify-center text-[10px] font-mono flex-shrink-0">
+                        {containsArabic(opt) ? ARABIC_LABELS[idx] : String.fromCharCode(65 + idx)}
+                      </span>
+                      <span>{opt}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VICTORY SCREEN */}
+          {gameState === 'victory' && (
+            <div className="my-auto text-center space-y-4 p-8 bg-slate-900 rounded-3xl border border-amber-500/40 shadow-2xl max-w-md mx-auto w-full">
+              <div className="text-4xl">🏆</div>
+              <h2 className="text-2xl font-black text-amber-400 uppercase">Kuis Selesai!</h2>
+              <p className="text-lg font-bold text-white">Total Skor: <span className="text-emerald-400">{score}</span></p>
+              <button onClick={() => setGameState('setup')} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold text-xs transition-all">
+                Kembali ke Menu Utama
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
